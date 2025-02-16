@@ -1,0 +1,822 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>URBX - Explorez, découvrez, partagez</title>
+    <link rel="icon" href="flavicon.png" type="image/png">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <style>
+        body, html {
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            font-family: Arial, sans-serif;
+        }
+
+        #map {
+            height: 100vh;
+            width: 100vw;
+            position: absolute;
+            top: 0;
+            left: 0;
+            z-index: 1;
+        }
+
+        .leaflet-control-zoom {
+            display: none !important;
+        }
+
+        .leaflet-popup-content-wrapper {
+            background: #272523 !important;
+            color: white !important;
+            border-radius: 8px;
+            padding: 10px;
+        }
+
+        .leaflet-popup-tip {
+            background: #272523 !important;
+        }
+
+        #loading-screen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background: #272523;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            z-index: 2000;
+        }
+
+        #loading-screen img {
+            width: 200px;
+            margin-bottom: 20px;
+        }
+
+        #progress-bar-container {
+            width: 80%;
+            max-width: 400px;
+            height: 20px;
+            background-color: #777;
+            border-radius: 10px;
+            overflow: hidden;
+            margin-top: 20px;
+        }
+
+        #progress-bar {
+            height: 100%;
+            width: 0;
+            background-color: #fff;
+            border-radius: 10px;
+            transition: width 0.5s ease;
+        }
+
+        #location-screen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background: #272523;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-direction: column;
+            color: white;
+            font-size: 18px;
+            text-align: center;
+            z-index: 2000;
+            padding: 20px;
+            box-sizing: border-box;
+        }
+
+        #location-screen.hidden {
+            display: none;
+        }
+
+        #location-screen img {
+            width: 100px;
+            margin-bottom: 20px;
+        }
+
+        #locate-btn, #map-btn, #search-btn {
+            position: fixed;
+            left: 15px;
+            background: #272523;
+            border: none;
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            z-index: 2001;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+        }
+
+        #locate-btn {
+            top: 75px;
+        }
+
+        #search-btn {
+            top: 15px; /* Position du bouton de recherche */
+        }
+
+        #search-popup {
+            display: none;
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 80%;
+            max-width: 400px;
+            background: #272523;
+            color: white;
+            padding: 15px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.5);
+            z-index: 3000;
+            text-align: center;
+        }
+        
+        #search-input {
+            width: calc(100% - 20px);
+            padding: 10px;
+            border-radius: 5px;
+            border: none;
+            margin-bottom: 10px;
+            box-sizing: border-box;
+        }
+        
+        #search-results {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+        
+        #search-results li {
+            padding: 10px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+            cursor: pointer;
+        }
+        
+        #search-results li:last-child {
+            border-bottom: none;
+        }
+        
+        #close-search-popup {
+            margin-top: 10px;
+            cursor: pointer;
+            background: #fff;
+            color: #272523;
+            padding: 8px 15px;
+            border-radius: 5px;
+            border: none;
+            font-weight: bold;
+        }
+        
+        #map-btn {
+            top: 135px;
+        }
+
+        #shop-btn {
+            top: 200px;
+        }
+
+        #locate-btn img, #map-btn img, #search-btn img {
+            width: 30px;
+            height: 30px;
+        }
+ 
+        #shop-popup {
+            display: none;
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 80%;
+            max-width: 400px;
+            background: #272523;
+            color: white;
+            padding: 15px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.5);
+            z-index: 3000;
+            text-align: center;
+        }
+       
+        #shop-popup img {
+            width: 100px;
+            margin-bottom: 20px;
+        }
+
+        #shop-link {
+            display: inline-block;
+            margin-top: 10px;
+            padding: 10px 20px;
+            background: #fff;
+            color: #272523;
+            border-radius: 5px;
+            text-decoration: none;
+            font-weight: bold;
+        }
+        
+        #close-shop-popup {
+            margin-top: 10px;
+            cursor: pointer;
+            background: #fff;
+            color: #272523;
+            padding: 8px 15px;
+            border-radius: 5px;
+            border: none;
+            font-weight: bold;
+        }
+
+        #donate-btn, #shop-btn {
+            position: fixed;
+            right: 15px;
+            background: #272523;
+            border: none;
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            z-index: 2001; /* Assurez-vous que le z-index est le même que les autres boutons */
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+        }
+
+        #donate-btn img, #shop-btn img {
+            width: 30px;
+            height: 30px;
+        }
+
+        #donate-btn {
+            top: 15px; /* Position du bouton de donation */
+        }
+
+        #shop-btn {
+            top: 75px; /* Position du bouton de la boutique, en dessous du bouton de donation */
+        }
+
+        #donate-popup {
+            display: none;
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 80%;
+            max-width: 400px;
+            background: #272523;
+            color: white;
+            padding: 15px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.5);
+            z-index: 3000;
+            text-align: center;
+        }
+
+        #donate-popup img {
+            width: 100px;
+            margin-bottom: 20px;
+        }
+
+        #donate-link {
+            display: inline-block;
+            margin-top: 10px;
+            padding: 10px 20px;
+            background: #fff;
+            color: #272523;
+            border-radius: 5px;
+            text-decoration: none;
+            font-weight: bold;
+        }
+
+        #close-donate-popup {
+            margin-top: 10px;
+            cursor: pointer;
+            background: #fff;
+            color: #272523;
+            padding: 8px 15px;
+            border-radius: 5px;
+            border: none;
+            font-weight: bold;
+        }
+        
+        #places-popup {
+            display: none;
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 80%;
+            max-width: 400px;
+            background: #272523;
+            color: white;
+            padding: 15px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.5);
+            z-index: 3000;
+            text-align: center;
+        }
+
+        #places-popup h2 {
+            margin: 0;
+            font-size: 18px;
+        }
+
+        #places-list {
+            list-style: none;
+            padding: 0;
+            margin-top: 10px;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+
+        #places-list li {
+            display: flex;
+            align-items: center;
+            padding: 10px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+            cursor: pointer;
+        }
+
+        #places-list li img {
+            width: 50px;
+            height: 50px;
+            margin-right: 10px;
+            border-radius: 5px;
+        }
+
+        #places-list li:last-child {
+            border-bottom: none;
+        }
+
+        #close-popup {
+            margin-top: 10px;
+            cursor: pointer;
+            background: #fff;
+            color: #272523;
+            padding: 8px 15px;
+            border-radius: 5px;
+            border: none;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <div id="loading-screen">
+        <img src="banner.png" alt="Bannière" />
+        <div id="progress-bar-container">
+            <div id="progress-bar"></div>
+        </div>
+    </div>
+
+    <div id="map"></div>
+
+    <div id="location-screen" class="hidden">
+        <img src="ok.png" alt="Autorisation localisation">
+        <p>
+            Nous avons besoin de votre localisation pour vous offrir 
+            une meilleure expérience. Cela nous permet d'afficher 
+            des informations pertinentes et adaptées à votre position.
+        </p>
+    </div>
+
+    <button id="locate-btn">
+        <img src="locate.png" alt="Localiser">
+    </button>
+
+    <button id="search-btn">
+        <img src="search.png" alt="Recherche">
+    </button>
+    
+    <button id="shop-btn">
+        <img src="shop.png" alt="Shop">
+    </button>
+
+    <div id="shop-popup">
+        <img src="market.png" alt="Market">
+        <p>
+            Vous pouvez acheter du matériel pour l'urbex sur notre site. 
+            Cliquez sur le bouton ci-dessous pour en savoir plus.
+        </p>
+        <a href="https://ko-fi.com/urbx/shop" target="_blank" id="shop-link">Visiter la boutique</a>
+        <button id="close-shop-popup">Fermer</button>
+    </div>
+
+    <div id="search-popup">
+        <input type="text" id="search-input" placeholder="Rechercher...">
+        <ul id="search-results"></ul>
+        <button id="close-search-popup">Fermer</button>
+    </div>
+
+    <button id="map-btn">
+        <img src="map.png" alt="Lieux">
+    </button>
+
+    <button id="donate-btn">
+        <img src="donation.png" alt="Donation">
+    </button>
+
+    <div id="places-popup">
+        <h2>Lieux à proximité</h2>
+        <ul id="places-list"></ul>
+        <button id="close-popup">Fermer</button>
+    </div>
+
+    <div id="donate-popup">
+        <img src="donate.png" alt="Donate">
+        <p>
+            Votre soutien nous aide à continuer à explorer et partager des lieux incroyables. 
+            Merci de votre générosité !
+        </p>
+        <a href="https://ko-fi.com/urbx" target="_blank" id="donate-link">Faire un don</a>
+        <button id="close-donate-popup">Fermer</button>
+    </div>
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script>
+        document.addEventListener("DOMContentLoaded", function () {
+            var map;
+            var userMarker;
+            var userCircle;
+            var userPosition;
+            var lastUpdateTime = "";
+            var places = [
+                { name: "48°22'4.754\"N 7°35'37.403\"E", lat: 48.3679, lon: 7.5937, description: "Urbex", image: "lieu_1.jpg" },
+                { name: "48°20'09.8\"N 7°32'46.0\"E", lat: 48.336056, lon: 7.546111, description: "Urbex", image: "lieu_2.jpg" },
+                { name: "48°18'43.2\"N 7°31'33.5\"E", lat: 48.312000, lon: 7.525972, description: "Urbex", image: "lieu_3.jpg" },
+                { name: "48°21'38.4\"N 7°27'58.2\"E", lat: 48.360667, lon: 7.466167, description: "Urbex", image: "lieu_4.jpg" },
+                { name: "48°24'18.2\"N 7°25'59.9\"E", lat: 48.405056, lon: 7.433306, description: "Urbex", image: "lieu_5.jpg" },
+                { name: "48°24'05.4\"N 7°24'45.0\"E", lat: 48.401500, lon: 7.412500, description: "Urbex", image: "lieu_6.jpg" },
+                { name: "48°19'35.5\"N 7°41'54.1\"E", lat: 48.326528, lon: 7.698361, description: "Urbex", image: "lieu_7.jpg" },
+                { name: "48°23'17.4\"N 7°43'35.9\"E", lat: 48.388167, lon: 7.726639, description: "Urbex", image: "lieu_8.jpg" },
+                { name: "48°29'24.6\"N 7°40'39.0\"E", lat: 48.490167, lon: 7.677500, description: "Urbex", image: "lieu_9.jpg" },
+                { name: "48°29'18.0\"N 7°40'07.3\"E", lat: 48.488333, lon: 7.668694, description: "Urbex", image: "lieu_10.jpg" },
+                { name: "48°27'40.1\"N 7°24'29.2\"E", lat: 48.461139, lon: 7.408111, description: "Urbex", image: "lieu_11.jpg" },
+                { name: "48°31'03.9\"N 7°17'16.0\"E", lat: 48.517750, lon: 7.287778, description: "Urbex", image: "lieu_12.jpg" },
+                { name: "48°32'37.4\"N 7°38'45.4\"E", lat: 48.543722, lon: 7.645944, description: "Urbex", image: "lieu.png" },
+                { name: "48°38'40.5\"N 8°02'09.0\"E", lat: 48.644583, lon: 8.035833, description: "Urbex", image: "lieu.png" },
+                { name: "48°31'08.3\"N 7°44'39.4\"E", lat: 48.518972, lon: 7.744278, description: "Urbex", image: "lieu.png" },
+                { name: "48°11'13.9\"N 7°45'30.0\"E", lat: 48.187194, lon: 7.758333, description: "Urbex", image: "lieu_15.jpg" },
+                { name: "48°19'35.4\"N 7°59'05.6\"E", lat: 48.326500, lon: 7.984889, description: "Urbex", image: "lieu_16.jpg" },
+                { name: "48°20'27.3\"N 7°50'11.9\"E", lat: 48.340917, lon: 7.836639, description: "Urbex", image: "lieu_17.jpg" },
+                { name: "48°36'14.5\"N 7°35'31.6\"E", lat: 48.604028, lon: 7.592111, description: "Urbex", image: "lieu_18.jpg" },
+                { name: "48°34'15.3\"N 7°42'18.8\"E", lat: 48.570917, lon: 7.705222, description: "Urbex", image: "lieu_19.jpg"},
+                { name: "48°38'10.5\"N 7°27'32.2\"E", lat: 48.636250, lon: 7.458944, description: "Urbex", image: "lieu_20.jpg"},
+                { name: "48°41'22.2\"N 7°22'37.4\"E", lat: 48.689500, lon: 7.377056, description: "Urbex", image: "lieu_21.jpg"},
+                { name: "48°44'28.9\"N 7°19'09.1\"E", lat: 48.741361, lon: 7.319194, description: "Urbex", image: "lieu.png"},
+                { name: "48°43'53.7\"N 7°42'20.7\"E", lat: 48.731583, lon: 7.705750, description: "Urbex", image: "lieu_23.jpg"},
+                { name: "48°25'57.1\"N 7°01'35.3\"E", lat: 48.432528, lon: 7.026472, description: "Urbex", image: "lieu.png"},
+                { name: "48°09'09.1\"N 7°31'34.7\"E", lat: 48.152528, lon: 7.526306, description: "Urbex", image: "lieu.png"},
+                { name: "48°00'42.7\"N 7°32'32.3\"E", lat: 48.011861, lon: 7.542306, description: "Urbex", image: "lieu_26.jpg"},
+                { name: "48°07'52.9\"N 7°17'13.7\"E", lat: 48.131361, lon: 7.287139, description: "Urbex", image: "lieu_27.jpg"},
+                { name: "48°03'35.3\"N 7°21'51.3\"E", lat: 48.059806, lon: 7.364250, description: "Urbex", image: "lieu_28.jpg"},
+                { name: "48°04'49.5\"N 7°20'57.5\"E", lat: 48.080417, lon: 7.349306, description: "Urbex", image: "lieu.png"},
+                { name: "48°11'53.8\"N 7°11'54.0\"E", lat: 48.198278, lon: 7.198333, description: "Urbex", image: "lieu_30.jpg"},
+                { name: "48°20'14.3\"N 7°13'08.2\"E", lat: 48.337306, lon: 7.218944, description: "Urbex", image: "lieu_31.jpg"},
+                { name: "48°20'22.5\"N 7°06'13.0\"E", lat: 48.339583, lon: 7.103611, description: "Urbex", image: "lieu_32.jpg"},
+                { name: "48°24'23.4\"N 7°09'54.4\"E", lat: 48.406500, lon: 7.165111, description: "Urbex", image: "lieu_33.jpg"},
+                { name: "48°13'10.7\"N 7°24'16.9\"E", lat: 48.219639, lon: 7.404694, description: "Urbex", image: "lieu_34.jpg"},
+                { name: "48°12'22.3\"N 7°21'55.2\"E", lat: 48.206194, lon: 7.365333, description: "Urbex", image: "lieu.png"},
+                { name: "48°12'27.7\"N 7°22'45.0\"E", lat: 48.207694, lon: 7.379167, description: "Urbex", image: "lieu_36.jpg"},
+                { name: "48°16'28.1\"N 7°24'15.6\"E", lat: 48.274472, lon: 7.404333, description: "Urbex", image: "lieu_37.jpg"},
+                { name: "48°15'24.1\"N 7°26'18.1\"E", lat: 48.256694, lon: 7.438361, description: "Urbex", image: "lieu_38.jpg"},
+                { name: "48°15'39.7\"N 7°26'31.0\"E", lat: 48.261028, lon: 7.441944, description: "Urbex", image: "lieu_39.jpg"},
+                { name: "48°15'42.3\"N 7°26'50.4\"E", lat: 48.261750, lon: 7.447333, description: "Urbex", image: "lieu_40.jpg"},
+                { name: "48°16'18.3\"N 7°27'15.6\"E", lat: 48.271750, lon: 7.454333, description: "Urbex", image: "lieu_41.jpg"},
+                { name: "48°15'14.3\"N 7°11'51.0\"E", lat: 48.253972, lon: 7.197500, description: "Urbex", image: "lieu_42.jpg"},
+                { name: "48°14'31.9\"N 7°10'02.4\"E", lat: 48.242194, lon: 7.167333, description: "Urbex", image: "lieu_43.jpg"},
+                { name: "48°33'47.7\"N 7°44'17.0\"E", lat: 48.563250, lon: 7.738056, description: "Urbex", image: "lieu_44.jpg"},
+                { name: "48°32'49.0\"N 7°47'32.3\"E", lat: 48.546944, lon: 7.792306, description: "Urbex", image: "lieu_45.jpg"},
+                { name: "48°33'33.0\"N 7°48'09.2\"E", lat: 48.559167, lon: 7.802556, description: "Urbex", image: "lieu.png"},
+                { name: "48°35'22.2\"N 7°44'12.2\"E", lat: 48.589500, lon: 7.736722, description: "Urbex", image: "lieu_47.jpg"},
+                { name: "48°37'25.7\"N 7°46'25.0\"E", lat: 48.623806, lon: 7.773611, description: "Urbex", image: "lieu_48.jpg"},
+                { name: "48°36'24.8\"N 7°47'14.1\"E", lat: 48.606889, lon: 7.787250, description: "Urbex", image: "lieu_49.jpg"},
+                { name: "48°35'26.2\"N 7°47'28.4\"E", lat: 48.590611, lon: 7.791222, description: "Urbex", image: "lieu_50.jpg"},
+                { name: "48°34'56.7\"N 7°47'06.6\"E", lat: 48.582417, lon: 7.785167, description: "Urbex", image: "lieu_51.jpg"},
+                { name: "48°34'26.0\"N 7°46'41.8\"E", lat: 48.573889, lon: 7.778278, description: "Urbex", image: "lieu_52.jpg"},
+                { name: "48°34'26.7\"N 7°46'46.6\"E", lat: 48.574083, lon: 7.779611, description: "Urbex", image: "lieu_53.jpg"},
+                { name: "48°34'38.7\"N 7°47'13.4\"E", lat: 48.577417, lon: 7.787056, description: "Urbex", image: "lieu_54.jpg"},
+                { name: "48°34'33.8\"N 7°47'19.3\"E", lat: 48.576056, lon: 7.788694, description: "Urbex", image: "lieu_55.jpg"},
+                { name: "48°34'32.5\"N 7°47'19.3\"E", lat: 48.575694, lon: 7.788694, description: "Urbex", image: "lieu_56.jpg"},
+                { name: "48°34'30.2\"N 7°47'22.5\"E", lat: 48.575056, lon: 7.789583, description: "Urbex", image: "lieu_57.jpg"},
+                { name: "48°34'29.6\"N 7°47'20.6\"E", lat: 48.574889, lon: 7.789056, description: "Urbex", image: "lieu_58.jpg"},
+                { name: "48°35'12.0\"N 7°47'15.9\"E", lat: 48.586667, lon: 7.787750, description: "Urbex", image: "lieu_59.jpg"},
+                { name: "48°35'15.8\"N 7°47'16.6\"E", lat: 48.587722, lon: 7.787944, description: "Urbex", image: "lieu_60.jpg"},
+                { name: "48°35'32.3\"N 7°47'06.6\"E", lat: 48.592306, lon: 7.785167, description: "Urbex", image: "lieu_61.jpg"},
+                { name: "48°35'33.7\"N 7°47'02.9\"E", lat: 48.592694, lon: 7.784139, description: "Urbex", image: "lieu.png"},
+                { name: "48°35'34.5\"N 7°47'04.1\"E", lat: 48.592917, lon: 7.784472, description: "Urbex", image: "lieu.png"},
+                { name: "48°36'05.3\"N 7°44'52.8\"E", lat: 48.601472, lon: 7.748000, description: "Urbex", image: "lieu_64.jpg"},
+                { name: "48°36'06.8\"N 7°44'56.3\"E", lat: 48.601889, lon: 7.748972, description: "Urbex", image: "lieu_65.jpg"},
+                { name: "48°36'09.1\"N 7°44'57.8\"E", lat: 48.602528, lon: 7.749389, description: "Urbex", image: "lieu_66.jpg"},
+                { name: "48°36'09.0\"N 7°44'54.7\"E", lat: 48.602500, lon: 7.748528, description: "Urbex", image: "lieu_67.jpg"},
+                { name: "48°32'12.3\"N 7°27'22.8\"E", lat: 48.536750, lon: 7.456333, description: "Urbex", image: "lieu_68.jpg"},
+                { name: "48°39'28.0\"N 7°45'51.2\"E", lat: 48.657778, lon: 7.764222, description: "Urbex", image: "lieu.png"},
+                { name: "48°39'39.0\"N 7°43'18.5\"E", lat: 48.660833, lon: 7.721806, description: "Urbex", image: "lieu_70.jpg"},
+                { name: "48°46'58.4\"N 7°26'14.7\"E", lat: 48.782889, lon: 7.437417, description: "Urbex", image: "lieu.png"},
+                { name: "48°45'20.3\"N 7°35'57.5\"E", lat: 48.755639, lon: 7.599306, description: "Urbex", image: "lieu_72.jpg"},
+                { name: "48°51'40.0\"N 7°13'07.4\"E", lat: 48.861111, lon: 7.218722, description: "Urbex", image: "lieu_73.jpg"},
+                { name: "48°49'17.2\"N 7°03'54.1\"E", lat: 48.821444, lon: 7.065028, description: "Urbex", image: "lieu_74.jpg"},
+                { name: "48°58'38.7\"N 7°22'44.8\"E", lat: 48.977417, lon: 7.379111, description: "Urbex", image: "lieu.png"},
+                { name: "48°31'20.4\"N 7°33'58.8\"E", lat: 48.522333, lon: 7.566333, description: "Urbex", image: "lieu.png"},
+                { name: "48°58'38.7\"N 7°22'44.8\"E", lat: 48.977417, lon: 7.379111, description: "Urbex", image: "lieu.png"},
+                { name: "49°05'30.4\"N 6°48'02.5\"E", lat: 49.091778, lon: 6.800694, description: "Urbex", image: "lieu.png"},
+                { name: "49°09'21.9\"N 6°43'20.8\"E", lat: 49.156083, lon: 6.722444, description: "Urbex", image: "lieu_79.jpg"},
+                { name: "49°11'00.2\"N 6°54'01.6\"E", lat: 49.183389, lon: 6.900444, description: "Urbex", image: "lieu_80.jpg"},
+                { name: "49°14'42.7\"N 6°39'45.3\"E", lat: 49.245194, lon: 6.662583, description: "Urbex", image: "lieu_81.jpg"},
+                { name: "49°12'13.9\"N 6°17'30.2\"E", lat: 49.203861, lon: 6.291722, description: "Urbex", image: "lieu_82.jpg"},
+                { name: "49°16'43.2\"N 6°10'59.5\"E", lat: 49.278667, lon: 6.183194, description: "Urbex", image: "lieu.png"},
+                { name: "49°07'56.3\"N 6°09'05.6\"E", lat: 49.132306, lon: 6.151556, description: "Urbex", image: "lieu_83.jpg"},
+                { name: "48°59'16.5\"N 5°47'06.7\"E", lat: 48.987917, lon: 5.785194, description: "Urbex", image: "lieu.png"},
+                { name: "48°42'05.7\"N 6°13'12.2\"E", lat: 48.701583, lon: 6.220056, description: "Urbex", image: "lieu_85.jpg"},
+                { name: "48°42'03.6\"N 6°11'38.0\"E", lat: 48.701000, lon: 6.193889, description: "Urbex", image: "lieu.png"},
+                { name: "48°40'41.1\"N 6°11'23.9\"E", lat: 48.678083, lon: 6.189972, description: "Urbex", image: "lieu_87.jpg"},
+                { name: "48°40'10.8\"N 6°08'55.1\"E", lat: 48.669667, lon: 6.148639, description: "Urbex", image: "lieu_88.jpg"},
+                { name: "48°41'41.5\"N 6°07'52.5\"E", lat: 48.694861, lon: 6.131250, description: "Urbex", image: "lieu_89.jpg"},
+                { name: "48°41'47.6\"N 6°09'43.4\"E", lat: 48.696556, lon: 6.162056, description: "Urbex", image: "lieu_90.jpg"},
+                { name: "48°37'52.2\"N 6°06'26.7\"E", lat: 48.631167, lon: 6.107417, description: "Urbex", image: "lieu_91.jpg"},
+                { name: "48°22'29.2\"N 6°16'49.6\"E", lat: 48.374778, lon: 6.280444, description: "Urbex", image: "lieu_92.jpg"},
+                { name: "48°16'41.6\"N 6°34'19.7\"E", lat: 48.278222, lon: 6.572139, description: "Urbex", image: "lieu_93.jpg"}
+            ];
+            var markers = [];
+
+            function getFormattedDate() {
+                var now = new Date();
+                return now.toLocaleDateString("fr-FR") + " " + now.toLocaleTimeString("fr-FR");
+            }
+
+            function loadingProgress() {
+                var progressBar = document.getElementById("progress-bar");
+                var width = 0;
+                var interval = setInterval(function () {
+                    if (width >= 100) {
+                        clearInterval(interval);
+                        document.getElementById("loading-screen").style.display = "none";
+                        document.getElementById("location-screen").classList.remove("hidden");
+                        requestLocation();
+                    } else {
+                        width++;
+                        progressBar.style.width = width + '%';
+                    }
+                }, 30);
+            }
+
+            function initMap() {
+                map = L.map('map', {
+                    zoomControl: false,
+                    minZoom: 5  
+                }).setView([48.3706, 7.6153], 17);
+
+                L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                    attribution: '© OpenStreetMap contributors'
+                }).addTo(map);
+
+                var pingIcon = L.icon({
+                    iconUrl: 'ping.png',
+                    iconSize: [32, 32],
+                    iconAnchor: [16, 32]
+                });
+
+                places.forEach(place => {
+                    var marker = addMarker(place.lat, place.lon, pingIcon, `<img src="${place.image}" alt="${place.name}" style="width:100%;border-radius:8px;"><br><b>${place.name}</b><br>${place.description}<br><a href="https://www.google.com/maps/dir/?api=1&origin=${userPosition[0]},${userPosition[1]}&destination=${place.lat},${place.lon}" target="_blank">Itinéraire</a>`);
+                    markers.push(marker);
+                });
+
+                document.getElementById("locate-btn").style.display = "flex";
+                document.getElementById("map-btn").style.display = "flex";
+                document.getElementById("donate-btn").style.display = "flex"; // Afficher le bouton de donation
+                document.getElementById("search-btn").style.display = "flex"; // Afficher le bouton de recherche
+                document.getElementById("shop-btn").style.display = "flex"; // Afficher le bouton de la boutique
+            }
+
+            function addMarker(lat, lon, icon, popupText) {
+                var dist = calculateDistance(userPosition[0], userPosition[1], lat, lon);
+                var distText = dist < 1000 ? `${Math.round(dist)} m` : `${(dist / 1000).toFixed(2)} km`;
+               var fullPopupText = popupText.replace('<b>', `<b>${distText} - `);
+
+                var marker = L.marker([lat, lon], { icon: icon }).addTo(map)
+                    .bindPopup(fullPopupText, { offset: [0, -20] });
+                marker.on('click', function () {
+                    map.setView(marker.getLatLng(), 19);
+                });
+                return marker;
+            }
+
+            function updateUserLocation(position) {
+                var lat = position.coords.latitude;
+                var lon = position.coords.longitude;
+                userPosition = [lat, lon];
+                lastUpdateTime = getFormattedDate();  
+
+                if (!map) {
+                    initMap();
+                }
+
+                if (!userMarker) {
+                    var userIcon = L.icon({
+                        iconUrl: 'user.png',
+                        iconSize: [32, 32],
+                        iconAnchor: [16, 32]
+                    });
+            
+                    userMarker = L.marker(userPosition, { icon: userIcon }).addTo(map)
+                        .bindPopup('<b>Votre position</b><br>Dernière mise à jour : ' + lastUpdateTime, { offset: [0, -20] });
+            
+                    userMarker.on('click', function () {
+                        map.setView(userMarker.getLatLng(), 19);
+                    });
+                } else {
+                    userMarker.setLatLng(userPosition).bindPopup('<b>Votre position</b><br>Dernière mise à jour : ' + lastUpdateTime).openPopup();
+                }
+
+                if (!userCircle) {
+                    userCircle = L.circle(userPosition, {
+                        color: 'blue',
+                        fillColor: '#30f',
+                        fillOpacity: 0.2,
+                        radius: 50 // Rayon en mètres
+                    }).addTo(map);
+                } else {
+                    userCircle.setLatLng(userPosition);
+                }
+
+                map.setView(userPosition, 19);
+            }
+
+            function requestLocation() {
+                if (navigator.geolocation) {
+                    navigator.geolocation.getCurrentPosition(function (position) {
+                        updateUserLocation(position);
+                        document.getElementById("location-screen").classList.add("hidden");
+                    }, function () {
+                        alert("Veuillez autoriser la géolocalisation pour utiliser cette fonctionnalité.");
+                    }, {
+                        enableHighAccuracy: true,
+                        timeout: 10000,
+                        maximumAge: 0
+                    });
+                } else {
+                    alert("La géolocalisation n'est pas prise en charge par votre navigateur.");
+                }
+            }
+
+            function calculateDistance(lat1, lon1, lat2, lon2) {
+                var R = 6371e3; // metres
+                var φ1 = lat1 * Math.PI/180;
+                var φ2 = lat2 * Math.PI/180;
+                var Δφ = (lat2-lat1) * Math.PI/180;
+                var Δλ = (lon2-lon1) * Math.PI/180;
+
+                var a = Math.sin(Δφ/2) * Math.sin(Δφ/2) +
+                        Math.cos(φ1) * Math.cos(φ2) *
+                        Math.sin(Δλ/2) * Math.sin(Δλ/2);
+                var c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+
+                var d = R * c; // in metres
+                return d;
+            }
+
+            function sortPlacesByDistance() {
+                if (!userPosition) return;
+
+                places.sort((a, b) => {
+                    let distA = calculateDistance(userPosition[0], userPosition[1], a.lat, a.lon);
+                    let distB = calculateDistance(userPosition[0], userPosition[1], b.lat, b.lon);
+                    return distA - distB;
+                });
+
+                let list = document.getElementById("places-list");
+                list.innerHTML = "";
+                places.slice(0, 5).forEach((place, index) => {
+                    let dist = calculateDistance(userPosition[0], userPosition[1], place.lat, place.lon);
+                    let distText = dist < 1000 ? `${Math.round(dist)} m` : `${(dist / 1000).toFixed(2)} km`;
+                    let li = document.createElement("li");
+                    li.innerHTML = `<img src="${place.image}" alt="${place.name}"><span>${place.name} - ${distText}</span>`;
+                    li.addEventListener("click", function () {
+                        map.setView([place.lat, place.lon], 19);
+                        markers[index].openPopup();
+                        document.getElementById("places-popup").style.display = "none"; // Fermer la popup
+                    });
+                    list.appendChild(li);
+                });
+            }
+
+            function closeAllPopups() {
+                document.getElementById("places-popup").style.display = "none";
+                document.getElementById("donate-popup").style.display = "none";
+                document.getElementById("search-popup").style.display = "none";
+                document.getElementById("shop-popup").style.display = "none";
+            }
+
+            document.getElementById("locate-btn").addEventListener("click", function () {
+                if (userPosition) {
+                    map.setView(userPosition, 19);
+                    userMarker.openPopup();
+                }
+            });
+
+            document.getElementById("map-btn").addEventListener("click", function () {
+                closeAllPopups();
+                var placesPopup = document.getElementById("places-popup");
+                if (placesPopup.style.display === "block") {
+                    placesPopup.style.display = "none";
+                } else {
+                    sortPlacesByDistance();
+                    placesPopup.style.display = "block";
+                }
+            });
+
+            document.getElementById("close-popup").addEventListener("click", function () {
+                document.getElementById("places-popup").style.display = "none";
+            });
+        
+            document.getElementById("donate-btn").addEventListener("click", function () {
+                closeAllPopups();
+                var donatePopup = document.getElementById("donate-popup");
+               if (donatePopup.style.display === "block") {
+                    donatePopup.style.display = "none";
+                } else {
+                    donatePopup.style.display = "block";
+                }
+            });
+
+            document.getElementById("close-donate-popup").addEventListener("click", function () {
+                document.getElementById("donate-popup").style.display = "none";
+            });
+
+            document.getElementById("search-btn").addEventListener("click", function () {
+                closeAllPopups();
+                var searchPopup = document.getElementById("search-popup");
+                if (searchPopup.style.display === "block") {
+                    searchPopup.style.display = "none";
+                } else {
+                    searchPopup.style.display = "block";
+                    displaySearchResults(""); // Afficher tous les lieux au début
+                }
+            });
+        
+            document.getElementById("close-search-popup").addEventListener("click", function () {
+                document.getElementById("search-popup").style.display = "none";
+            });
+            
+            document.getElementById("search-input").addEventListener("input", function () {
+                var query = this.value.toLowerCase();
+                displaySearchResults(query);
+            });
+        
+            document.getElementById("shop-btn").addEventListener("click", function () {
+                closeAllPopups();
+                var shopPopup = document.getElementById("shop-popup");
+                if (shopPopup.style.display === "block") {
+                    shopPopup.style.display = "none";
+                } else {
+                    shopPopup.style.display = "block";
+                }
+            });
+
+            document.getElementById("close-shop-popup").addEventListener("click", function () {
+                document.getElementById("shop-popup").style.display = "none";
+            });
+
+            function displaySearchResults(query) {
+                var results = places.filter(place => place.name.toLowerCase().includes(query));
+                var resultsList = document.getElementById("search-results");
+                resultsList.innerHTML = "";
+
+                if (results.length === 0) {
+                    var noResultsLi = document.createElement("li");
+                    noResultsLi.textContent = "Aucun résultat trouvé";
+                    resultsList.appendChild(noResultsLi);
+                } else {
+                    results.forEach((place, index) => {
+                        var dist = calculateDistance(userPosition[0], userPosition[1], place.lat, place.lon);
+                        var distText = dist < 1000 ? `${Math.round(dist)} m` : `${(dist / 1000).toFixed(2)} km`;
+                        var li = document.createElement("li");
+                        li.innerHTML = `<img src="${place.image}" alt="${place.name}" style="width: 50px; height: 50px; margin-right: 10px; border-radius: 5px;"><span>${place.name} - ${distText}</span>`;
+                        li.addEventListener("click", function () {
+                            map.setView([place.lat, place.lon], 19);
+                            markers[index].openPopup();
+                            document.getElementById("search-popup").style.display = "none";
+                        });
+                        resultsList.appendChild(li);
+                    });
+                }
+            }
+
+            loadingProgress();
+        });
+    </script>
+</body>
+</html>
